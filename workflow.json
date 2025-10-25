@@ -1,0 +1,511 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $('Combine Messages').item.json.sheetId }}/values/Sheet1!A2:E10000:clear",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        848,
+        128
+      ],
+      "id": "289eb8b0-a226-42af-8fd8-3e114cca1a5b",
+      "name": "Clear Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "896318233558503",
+        "recipientPhoneNumber": "YOUR_PHONE_NUMBER_IN_E164_FORMAT",
+        "textBody": "=📋 *YOUR TO-DO LIST*\n━━━━━━━━━━━━━━━━\n\n{{ $json.output }}\n\n━━━━━━━━━━━━━━━━\n✅ Analyzed {{ $('Combine Messages').item.json.totalMessages }} messages",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        128
+      ],
+      "id": "2c076c06-5a37-4512-ac61-abf222f3fef4",
+      "name": "Send To-Do",
+      "webhookId": "b24cc72c-e05c-4fcb-b835-ef4ccced7dc4",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "b1fJbMMw3pWaKWVf",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        464,
+        336
+      ],
+      "id": "1611c419-c8c1-43f0-8cc2-96b97834cf07",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "uiiIeeXvCVQZAidb",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze these WhatsApp messages and create a prioritized to-do list.\n\nExtract:\n- Tasks and action items\n- Important deadlines\n- Follow-ups needed\n- Commitments made\n\nMessages:\n{{ $json.allMessages }}\n\nCreate a to-do list organized by:\n🔴 HIGH PRIORITY\n🟡 MEDIUM PRIORITY\n🟢 LOW PRIORITY\n\nBe concise and actionable.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        464,
+        128
+      ],
+      "id": "c41f2a4c-0f2f-4633-8e85-5c28958f3087",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const values = $input.item.json.values;\n\nif (!values || values.length <= 1) {\n  return {\n    json: {\n      allMessages: 'No messages found.',\n      totalMessages: 0,\n      sheetId: $('Get Sheet ID').item.json.sheetId\n    }\n  };\n}\n\nconst rows = values.slice(1);\nlet allMessages = [];\n\nfor (let row of rows) {\n  const [timestamp, date, from, sender_name, message] = row;\n  \n  if (message && message.trim() !== '') {\n    allMessages.push(`[${date}] ${sender_name}: ${message}`);\n  }\n}\n\nconst combinedText = allMessages.join('\\n\\n');\n\nreturn {\n  json: {\n    allMessages: combinedText,\n    totalMessages: allMessages.length,\n    sheetId: $('Get Sheet ID').item.json.sheetId\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        128
+      ],
+      "id": "521fe36b-7396-4c19-a82b-e147cbc9b065",
+      "name": "Combine Messages"
+    },
+    {
+      "parameters": {
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $json.sheetId }}/values/Sheet1",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        80,
+        128
+      ],
+      "id": "8a64620f-4010-4fcc-b7a1-149b9ec19e96",
+      "name": "Read Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const files = $input.item.json.files || [];\n\nif (files.length === 0) {\n  throw new Error('❌ No sheet found!');\n}\n\nreturn {\n  json: {\n    sheetId: files[0].id\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        128
+      ],
+      "id": "1951ce64-7408-4b30-b1b6-e6561cf953c0",
+      "name": "Get Sheet ID"
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "name='WhatsApp Messages Log' and mimeType='application/vnd.google-apps.spreadsheet'"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -320,
+        128
+      ],
+      "id": "5160da2b-4660-47a0-8fef-404c1e95d57f",
+      "name": "Find Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 22 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -512,
+        128
+      ],
+      "id": "98632a64-52d4-4814-9513-5c9db3cbaf7e",
+      "name": "Daily at 10 PM"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $json.sheetId }}/values/Sheet1:append?valueInputOption=USER_ENTERED",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"values\": [[\n    \"{{ $json.messages[0].timestamp }}\",\n    \"{{ $now.toFormat('yyyy-MM-dd HH:mm:ss') }}\",\n    \"{{ $json.messages[0].from }}\",\n    \"{{ $json.contacts[0].profile.name }}\",\n    \"{{ $json.messages[0].text.body }}\"\n  ]]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        656,
+        -336
+      ],
+      "id": "cc2b542d-4ba7-49a0-bb03-e916c54152b8",
+      "name": "Append Message",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let sheetId;\nconst whatsappData = $('WhatsApp Trigger').item.json;\n\nif ($input.item.json.spreadsheetId) {\n  sheetId = $input.item.json.spreadsheetId;\n} else {\n  sheetId = $input.item.json.sheetId;\n}\n\nreturn {\n  json: {\n    sheetId: sheetId,\n    messages: whatsappData.messages,\n    contacts: whatsappData.contacts\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -336
+      ],
+      "id": "3a8986f5-6aa3-42dd-ae47-f263e94b6dd0",
+      "name": "Prepare Data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"properties\": {\n    \"title\": \"WhatsApp Messages Log\"\n  },\n  \"sheets\": [\n    {\n      \"properties\": {\n        \"title\": \"Sheet1\"\n      },\n      \"data\": [\n        {\n          \"startRow\": 0,\n          \"startColumn\": 0,\n          \"rowData\": [\n            {\n              \"values\": [\n                {\"userEnteredValue\": {\"stringValue\": \"timestamp\"}},\n                {\"userEnteredValue\": {\"stringValue\": \"date\"}},\n                {\"userEnteredValue\": {\"stringValue\": \"from\"}},\n                {\"userEnteredValue\": {\"stringValue\": \"sender_name\"}},\n                {\"userEnteredValue\": {\"stringValue\": \"message\"}}\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        272,
+        -224
+      ],
+      "id": "fd172b8d-9343-4f4b-82a0-9aecec8e4db3",
+      "name": "Create New Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.needsCreation }}",
+              "value2": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -336
+      ],
+      "id": "228906b0-e321-42bd-b35c-eeed658c8d12",
+      "name": "Need to Create?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const files = $input.item.json.files || [];\n\nif (files.length > 0) {\n  return {\n    json: {\n      sheetId: files[0].id,\n      needsCreation: false,\n      ...($('WhatsApp Trigger').item.json)\n    }\n  };\n} else {\n  return {\n    json: {\n      sheetId: null,\n      needsCreation: true,\n      ...($('WhatsApp Trigger').item.json)\n    }\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        -336
+      ],
+      "id": "4af9d9bf-4aec-42e0-b7f9-898e56828a89",
+      "name": "Check Search Result"
+    },
+    {
+      "parameters": {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "name='WhatsApp Messages Log' and mimeType='application/vnd.google-apps.spreadsheet'"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -320,
+        -336
+      ],
+      "id": "e16a6306-ba16-44b7-93e9-cafde120780a",
+      "name": "Search for Existing Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {
+          "messageStatusUpdates": [
+            "all"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        -336
+      ],
+      "id": "20cdee04-7a1c-4aeb-8864-d3281e2a9d76",
+      "name": "WhatsApp Trigger",
+      "webhookId": "77130aa1-8f5a-4c21-91f6-09c8145b6fd4",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "bjs6YZaEXIve4Kl9",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Send To-Do": {
+      "main": [
+        [
+          {
+            "node": "Clear Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send To-Do",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Messages": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sheet": {
+      "main": [
+        [
+          {
+            "node": "Combine Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sheet ID": {
+      "main": [
+        [
+          {
+            "node": "Read Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Sheet": {
+      "main": [
+        [
+          {
+            "node": "Get Sheet ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily at 10 PM": {
+      "main": [
+        [
+          {
+            "node": "Find Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data": {
+      "main": [
+        [
+          {
+            "node": "Append Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create New Sheet": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Need to Create?": {
+      "main": [
+        [
+          {
+            "node": "Create New Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Search Result": {
+      "main": [
+        [
+          {
+            "node": "Need to Create?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search for Existing Sheet": {
+      "main": [
+        [
+          {
+            "node": "Check Search Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search for Existing Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "306e92fc1cb3ac32ef51132646da50f1418ea8be2eb1d98f4bda35a9e87465a7"
+  }
+}
